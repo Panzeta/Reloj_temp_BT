@@ -1,5 +1,5 @@
 #include <SoftwareSerial.h>
-
+SoftwareSerial bt(3, 4);
 
 // Header file includes
 #include <MD_Parola.h>
@@ -40,7 +40,7 @@ MD_Parola P = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 #define SPEED_TIME  75
 #define PAUSE_TIME  0
 
-#define MAX_MESG  30
+#define MAX_MESG  50
 
 // Scrolling parameters
 
@@ -51,7 +51,7 @@ uint16_t scrollPause = 2; // in milliseconds
 
 // Global message buffers shared by Serial and Scrolling functions
 #define  BUF_SIZE  75
-char curMessage[BUF_SIZE] = { "mensaje" };
+char curMessage[BUF_SIZE] = { "" };
 char newMessage[BUF_SIZE] = { "" };
 bool newMessageAvailable = true; 
 
@@ -140,9 +140,9 @@ void readSerial(void)
 {
   static char *cp = newMessage;
 
-  while (Serial.available())
+  while (bt.available())
   {
-    *cp = (char)Serial.read();
+    *cp = (char)bt.read();
     if ((*cp == '\n') || (cp - newMessage >= BUF_SIZE-2)) // end of message character or full buffer
     {
       *cp = '\0'; // end the string
@@ -157,10 +157,10 @@ void readSerial(void)
 
 void setup(void)
 {
-  Serial.begin(9600);
-  Serial.print("\n[Parola Scrolling Display]\nType a message for the scrolling display\nEnd message line with a newline");
+  bt.begin(9600);
+  bt.print("\n[Parola Scrolling Display]\nType a message for the scrolling display\nEnd message line with a newline");
 
-  
+  P.displayText(curMessage, scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
   P.begin(3);
   P.setInvert(false);
 
@@ -171,7 +171,7 @@ void setup(void)
 
   P.displayZoneText(1, szTime, PA_CENTER, SPEED_TIME, PAUSE_TIME, PA_PRINT, PA_NO_EFFECT);
   P.displayZoneText(0, szMesg, PA_CENTER, SPEED_TIME, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
-  P.displayZoneText(2, newMessage,  scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
+  P.displayZoneText(2, curMessage,  scrollAlign, scrollSpeed, scrollPause, scrollEffect, scrollEffect);
 
   P.addChar('$', degC);
   P.addChar('&', degF);
@@ -251,7 +251,11 @@ void loop(void)
         getDate(szMesg);
         break;
     }
-      if (P.displayAnimate())
+     if (P.displayAnimate())
+     {
+      if (bt.available())
+    
+    bt.write(bt.read());
   
     if (newMessageAvailable)
     {
@@ -261,7 +265,7 @@ void loop(void)
 
     P.displayReset();
   }
-
+  readSerial();
   // Finally, adjust the time string if we have to
   if (millis() - lastTime >= 1000)
   {
@@ -269,6 +273,7 @@ void loop(void)
     getTime(szTime, flasher);
     flasher = !flasher;
 
-    P.displayReset(1);
+    P.displayReset();
   }
+ }
 }
